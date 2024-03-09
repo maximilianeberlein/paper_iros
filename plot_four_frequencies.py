@@ -3,10 +3,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import h5py
 from matplotlib.lines import Line2D
+from scipy import signal
 
 # Define the window size for calculating RMS values and moving average filter
 rms_window_size = 200
-moving_average_window_size = 10  # Adjust the window size for the moving average filter
+moving_average_window_size = 1  # Adjust the window size for the moving average filter
 
 # 10_Sine_34gg_2kHz_1M-1M_26-July-2023_12-18-37 für Fig 9 und 10
 # 10_Sine_34gg_2kHz_TestPCB_26-July-2023_16-52-48 für Fig. 12 (8 Hz)
@@ -110,6 +111,11 @@ for j, file_path in enumerate(file_paths):
     if rms_voltage_values.isna().any():
             print(f"NaN values found in window ")
 
+    if j==3:
+        adj_displacement = adj_displacement[(adjusted_time >= 0.1) & (adjusted_time < 0.8)]
+        rms_voltage_values = rms_voltage_values[(adjusted_time >= 0.1) & (adjusted_time < 0.8)]
+        adjusted_time = adjusted_time[(adjusted_time >= 0.1) & (adjusted_time < 0.8)]
+        adjusted_time -= 0.1
 
     coefficients = np.polyfit(rms_voltage_values, adj_displacement, degree)
     
@@ -117,12 +123,13 @@ for j, file_path in enumerate(file_paths):
     # coefficients_2 = [-14.53913, 182.8583, -766.8713, 1072.563]
     # coefficients_2 = [7.427259, -89.15698, 355.8401, -472.8132]
 
-    if j==2:
-        coefficients = [7.597979, -91.58709, 367.074, -489.5696] # 10 Hz
+    # if j==2:
+    #     coefficients = [7.597979, -91.58709, 367.074, -489.5696] # 10 Hz
 
 
     est_displ = np.polyval(coefficients, rms_voltage_values)
 
+    
     offset = np.min(adj_displacement)
     adj_displacement -= offset
     est_displ -= offset
@@ -131,34 +138,92 @@ for j, file_path in enumerate(file_paths):
          adj_displacement *= 2.25
          est_displ *= 2.25
 
+    rmse = np.sqrt(np.mean((adj_displacement - est_displ) ** 2))
+    range_gt_displ = np.max(adj_displacement) - np.min(adj_displacement)
+    print(range_gt_displ)
+    nrmse = rmse / range_gt_displ
+    print("Root Mean Square Error (RMSE):", rmse)
+    print("Normalized Root Mean Square Error (NRMSE):", nrmse)
+
+
+    adj_displacement -= adj_displacement.mean()
+    adj_displacement /= adj_displacement.std()
+    est_displ -= est_displ.mean()
+    est_displ /= est_displ.std()
+
+    cross_corr = np.correlate(adj_displacement, est_displ, mode='full')
+
+    # Find the index of the maximum value in the cross-correlation array
+    max_corr_index = np.argmax(cross_corr)
+    print("max_corr", max_corr_index)
+    noisy_signal2 = np.roll(est_displ, max_corr_index)
+
+    nsamples = len(adj_displacement)
+    t = np.arange(1-nsamples, nsamples)
+
+    # Calculate the time delay corresponding to the peak correlation
+    time_delay_index = max_corr_index - len(adj_displacement) + 1
+    time_delay = t[time_delay_index] - t[0] 
+    print("delay", time_delay)
+
+    lags = signal.correlation_lags(adj_displacement.size, est_displ.size, mode="full")
+    lag = lags[np.argmax(cross_corr)]
+    print("LAG", lag)
+
+    # lags = signal.correlation_lags(x.size, y.size, mode="full")
+    # lag = lags[np.argmax(correlation)]
+
+    # Calculate the phase lag in radians
+    sampling_frequency = 500 # 1 / (adjusted_time[1] - adjusted_time[0])
+    phase_lag_radians = 2 * np.pi * time_delay / len(adj_displacement)
+
+    # Convert phase lag from radians to degrees
+    phase_lag_degrees = np.degrees(phase_lag_radians)
+
+    print("Phase Lag (radians):", phase_lag_radians)
+    print("Phase Lag (degrees):", phase_lag_degrees)
+
+
     axs[j // 2][j % 2].plot(adjusted_time, adj_displacement, linewidth=line_width, color='r')
     axs[j // 2][j % 2].plot(adjusted_time, est_displ, linewidth=line_width, color=p1_color)
+    #axs[j // 2][j % 2].plot(adjusted_time, noisy_signal2, linewidth=line_width, color='g')
 
     if j==2 or j==3:
         axs[j // 2][j % 2].set_xlabel(r'Time (s)', weight='bold')  # X-axis label with increased font size and bold
     if j==0 or j==2:
         axs[j // 2][j % 2].set_ylabel(r'Displacement (mm)')  # Y-axis label with increased font size and bold
     axs[j // 2][j % 2].grid(True)  # Add grid with dashed lines
+
+    if j==0:
+         title = '1 Hz'
+    elif j==1:
+         title = '8 Hz'
+    elif j==2:
+         title = '10 Hz'
+    elif j==3:
+         title = '20 Hz'
+
+    axs[j // 2][j % 2].set_title(f'{title} - NRMSE: {round(nrmse, 4)}',fontsize=25)
     print("yey")
 
 
 legend_elements = [
-    Line2D([0], [0], color=p1_color, lw=2, label='Estimated Displacement (Method 1)'),
+    Line2D([0], [0], color=p1_color, lw=2, label='Estimated Displacement (voltage-method)'),
     Line2D([0], [0], color='r', lw=2, label='Ground Truth Displacement'),
 ]
 
 fig.legend(handles=legend_elements, loc='upper center', handlelength=2,ncol=7, bbox_to_anchor=(0.5, 1.01), fontsize=18)
 
 fig.subplots_adjust(
-    top=0.925,
-    bottom=0.315,
+    top=0.895,
+    bottom=0.285,
     left=0.075,
     right=0.98,
-    hspace=0.2,
+    hspace=0.32,
     wspace=0.105
 )
 
-plt.savefig('filtered-four.pdf')
+plt.savefig('FINAL-FIG-2.pdf')
 # plt.legend(['Actual Displacement', 'Estimated Displacement'])
 # plt.title('Estimated Displacement', fontsize=25)
 

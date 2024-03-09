@@ -10,7 +10,10 @@ moving_average_window_size = 1  # Adjust the window size for the moving average 
 
 # 10_Sine_34gg_2kHz_1M-1M_26-July-2023_12-18-37 für Fig 9 und 10
 
-with h5py.File('MLogs/10_Sine_34gg_2kHz_1M-1M_26-July-2023_12-18-37/data.mat', 'r') as file:
+# 10_Vogt_34gg_2kHz_TestPCB_26-July-2023_15-36-24 Fig. 15
+# 10_LFT_34gg_2kHz_UpsideDown_26-July-2023_21-17-32 Fig. 16
+
+with h5py.File('MLogs/10_LFT_34gg_2kHz_UpsideDown_26-July-2023_21-17-32/data.mat', 'r') as file:
     # Extract the data
     data = {}
     for key, value in file.items():
@@ -30,7 +33,6 @@ time = df.iloc[0, :]
 cmd_voltage = df.iloc[1, :]
 displacement = df.iloc[2, :]
 ss_voltage = df.iloc[3, :]
-ss_current = df.iloc[4, :]
 
 # Factor for laser displacement and reference
 displacement = displacement * 4 + 30
@@ -44,7 +46,6 @@ num_rms = num_samples // rms_window_size
 adjusted_time = np.zeros(num_rms)
 adj_displacement = np.zeros(num_rms)
 rms_voltage_values = np.zeros(num_rms)
-rms_current_values = np.zeros(num_rms)
 
 #impedance = np.zeros(num_rms)
 
@@ -57,7 +58,6 @@ for i in range(num_rms):
 
     # Calculate RMS values
     rms_voltage_values[i] = np.sqrt(np.mean(ss_voltage.iloc[start_index:end_index] ** 2))
-    rms_current_values[i] = np.sqrt(np.mean(ss_current.iloc[start_index:end_index] ** 2))
 
     # Adjusted time is set to the middle time value of the window
     adjusted_time[i] = np.mean(time.iloc[start_index:end_index])
@@ -65,44 +65,37 @@ for i in range(num_rms):
 
 degree = 3
 rms_voltage_values = pd.Series(rms_voltage_values)
-rms_current_values = pd.Series(rms_current_values)
 
-if rms_voltage_values.isna().any() or rms_current_values.isna().any():
+if rms_voltage_values.isna().any():
         print(f"NaN values found in window ALDER")
 
 rms_voltage_values = rms_voltage_values.rolling(window=moving_average_window_size, min_periods=1).mean()
-rms_current_values = rms_current_values.rolling(window=moving_average_window_size, min_periods=1).mean()
 
-if rms_voltage_values.isna().any() or rms_current_values.isna().any():
+if rms_voltage_values.isna().any():
         print(f"NaN values found in window ")
 
 
 coefficients_1 = np.polyfit(rms_voltage_values, adj_displacement, degree)
+print(coefficients_1)
+### if VOGT File change coeffs:
+#coefficients_1 = [63.78575, -236.9001, 278.6847, -101.7]
+###
 est_displ_1 = np.polyval(coefficients_1, rms_voltage_values)
-
-impedance = rms_voltage_values / rms_current_values
-
-coefficients_2 = np.polyfit(impedance, adj_displacement, degree)
-est_displ_2 = np.polyval(coefficients_2, impedance)
-##################################################
-adj_displacement = adj_displacement[adjusted_time >= 5]
-est_displ_1 = est_displ_1[adjusted_time >= 5]
-est_displ_2 = est_displ_2[adjusted_time >= 5]
-adjusted_time = adjusted_time[adjusted_time >= 5]
-adjusted_time -= 5
-
-rmse_1 = np.sqrt(np.mean((adj_displacement - est_displ_1) ** 2))
-range_gt_displ = np.max(adj_displacement) - np.min(adj_displacement)
-nrmse_1 = rmse_1 / range_gt_displ
-
-rmse_2 = np.sqrt(np.mean((adj_displacement - est_displ_2) ** 2))
-range_gt_displ = np.max(adj_displacement) - np.min(adj_displacement)
-nrmse_2 = rmse_2 / range_gt_displ
 
 offset = np.min(adj_displacement)
 adj_displacement -= offset
 est_displ_1 -= offset
-est_displ_2 -= offset
+
+adj_displacement = adj_displacement[(adjusted_time >= 4.4) & (adjusted_time < 16)]
+est_displ_1 = est_displ_1[(adjusted_time >= 4.4) & (adjusted_time < 16)]
+adjusted_time = adjusted_time[(adjusted_time >= 4.4) & (adjusted_time < 16)]
+adjusted_time -= 4.4
+##################################################
+# adj_displacement = adj_displacement[adjusted_time >= 5]
+# est_displ_1 = est_displ_1[adjusted_time >= 5]
+# est_displ_2 = est_displ_2[adjusted_time >= 5]
+# adjusted_time = adjusted_time[adjusted_time >= 5]
+# adjusted_time -= 5
 
 
 A = 6 
@@ -123,23 +116,22 @@ plt.rcParams['axes.linewidth'] = 1.5
 
 line_width = 2.5
 
-fig, axs = plt.subplots(1, 2, figsize=(16, 9))  # 1 row, 2 columns
+fig, axs = plt.subplots(1, 1, figsize=(16, 9))  # 1 row, 2 columns
 
-axs[0].plot(adjusted_time, adj_displacement, linewidth=line_width, color='r')
-axs[0].plot(adjusted_time, est_displ_1, linewidth=line_width, color=p1_color)
-axs[0].set_xlabel(r'Time (s)', weight='bold')  # X-axis label with increased font size and bold
-axs[0].set_ylabel(r'Displacement (mm)')  # Y-axis label with increased font size and bold
-axs[0].grid(True)  # Add grid with dashed lines
-axs[0].set_title(f'NRMSE: {round(nrmse_1, 4)}',fontsize=25)
+axs.plot(adjusted_time, adj_displacement, linewidth=line_width, color='r')
+axs.plot(adjusted_time, est_displ_1, linewidth=line_width, color=p1_color)
+axs.set_xlabel(r'Time (s)', weight='bold')  # X-axis label with increased font size and bold
+axs.set_ylabel(r'Displacement (mm)')  # Y-axis label with increased font size and bold
+axs.grid(True)  # Add grid with dashed lines
+#axs[0].set_title(r"a)", fontsize=28)
 
 
-# Plotting on the second subplot
-axs[1].plot(adjusted_time, adj_displacement, linewidth=line_width, color='r')
-axs[1].plot(adjusted_time, est_displ_2, linewidth=line_width, color=p2_color)
-axs[1].set_xlabel(r'Time (s)', weight='bold')  # X-axis label with increased font size and bold
-axs[1].grid(True)  # Add grid with dashed lines
-axs[1].set_title(f'NRMSE: {round(nrmse_2, 4)}',fontsize=25)
-
+# # Plotting on the second subplot
+# axs[1].plot(adjusted_time, adj_displacement, linewidth=line_width, color='r')
+# axs[1].plot(adjusted_time, est_displ_2, linewidth=line_width, color=p2_color)
+# axs[1].set_xlabel(r'Time (s)', weight='bold')  # X-axis label with increased font size and bold
+# axs[1].grid(True)  # Add grid with dashed lines
+#axs[1].set_title(r"b)", fontsize=28)
 
 plt.xlabel(r'Time (s)', weight='bold')  # X-axis label with increased font size and bold
 #plt.ylabel(r'Displacement (mm)')  # Y-axis label with increased font size and bold
@@ -148,22 +140,21 @@ plt.grid(True)  # Add grid with dashed lines
 
 legend_elements = [
     Line2D([0], [0], color=p1_color, lw=2, label='Estim. Displacement (voltage-method)'),
-    Line2D([0], [0], color=p2_color, lw=2, label='Estim. Displacement (impedance-method)'),
     Line2D([0], [0], color='r', lw=2, label='Ground Truth Displacement'),
 ]
 
 fig.legend(handles=legend_elements, loc='upper center', handlelength=2,ncol=7, bbox_to_anchor=(0.5, 1.01), fontsize=18)
 
 fig.subplots_adjust(
-    top=0.895,
-    bottom=0.585,
-    left=0.075,
-    right=0.98,
+    top=0.925,
+    bottom=0.615,
+    left=0.28,
+    right=0.72,
     hspace=0.2,
     wspace=0.105
 )
 
-plt.savefig('FINAL-FIG-1.pdf')
+plt.savefig('FINAL-FIG-4.pdf')
 # plt.legend(['Actual Displacement', 'Estimated Displacement'])
 # plt.title('Estimated Displacement', fontsize=25)
 
