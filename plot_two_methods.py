@@ -130,7 +130,7 @@ axs[0].plot(adjusted_time, est_displ_1, linewidth=line_width, color=p1_color)
 axs[0].set_xlabel(r'Time (s)', weight='bold')  # X-axis label with increased font size and bold
 axs[0].set_ylabel(r'Displacement (mm)')  # Y-axis label with increased font size and bold
 axs[0].grid(True)  # Add grid with dashed lines
-axs[0].set_title(f'NRMSE: {round(nrmse_1, 4)}',fontsize=25)
+axs[0].set_title(f'NRMSE: {nrmse_1:.4f}',fontsize=25)
 
 
 # Plotting on the second subplot

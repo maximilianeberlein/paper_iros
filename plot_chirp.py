@@ -97,11 +97,11 @@ est_displ = np.polyval(coefficients_1, rms_voltage_values)
 est_displ_for_fit = np.polyval(coefficients_1, rms_voltage_values_for_fit)
 
 
-# offset = np.min(adj_displacement)
-# adj_displacement -= offset
-# est_displ -= offset
-# adj_displacement_for_fit -= offset
-# est_displ_for_fit -= offset
+offset = np.min(adj_displacement)
+adj_displacement -= offset
+est_displ -= offset
+adj_displacement_for_fit -= offset
+est_displ_for_fit -= offset
 
 
 interval_05hz = (adjusted_time > 1.5) & (adjusted_time < 11.5)

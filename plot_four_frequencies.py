@@ -145,45 +145,6 @@ for j, file_path in enumerate(file_paths):
     print("Root Mean Square Error (RMSE):", rmse)
     print("Normalized Root Mean Square Error (NRMSE):", nrmse)
 
-
-    adj_displacement -= adj_displacement.mean()
-    adj_displacement /= adj_displacement.std()
-    est_displ -= est_displ.mean()
-    est_displ /= est_displ.std()
-
-    cross_corr = np.correlate(adj_displacement, est_displ, mode='full')
-
-    # Find the index of the maximum value in the cross-correlation array
-    max_corr_index = np.argmax(cross_corr)
-    print("max_corr", max_corr_index)
-    noisy_signal2 = np.roll(est_displ, max_corr_index)
-
-    nsamples = len(adj_displacement)
-    t = np.arange(1-nsamples, nsamples)
-
-    # Calculate the time delay corresponding to the peak correlation
-    time_delay_index = max_corr_index - len(adj_displacement) + 1
-    time_delay = t[time_delay_index] - t[0] 
-    print("delay", time_delay)
-
-    lags = signal.correlation_lags(adj_displacement.size, est_displ.size, mode="full")
-    lag = lags[np.argmax(cross_corr)]
-    print("LAG", lag)
-
-    # lags = signal.correlation_lags(x.size, y.size, mode="full")
-    # lag = lags[np.argmax(correlation)]
-
-    # Calculate the phase lag in radians
-    sampling_frequency = 500 # 1 / (adjusted_time[1] - adjusted_time[0])
-    phase_lag_radians = 2 * np.pi * time_delay / len(adj_displacement)
-
-    # Convert phase lag from radians to degrees
-    phase_lag_degrees = np.degrees(phase_lag_radians)
-
-    print("Phase Lag (radians):", phase_lag_radians)
-    print("Phase Lag (degrees):", phase_lag_degrees)
-
-
     axs[j // 2][j % 2].plot(adjusted_time, adj_displacement, linewidth=line_width, color='r')
     axs[j // 2][j % 2].plot(adjusted_time, est_displ, linewidth=line_width, color=p1_color)
     #axs[j // 2][j % 2].plot(adjusted_time, noisy_signal2, linewidth=line_width, color='g')
