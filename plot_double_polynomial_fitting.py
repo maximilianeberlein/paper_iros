@@ -32,6 +32,8 @@ time = df.iloc[0, 10000:-20000]
 cmd_voltage = df.iloc[1, 10000:-20000]
 displacement = df.iloc[2, 10000:-20000]
 ss_voltage = df.iloc[3, 10000:-20000]
+ss_current = df.iloc[4, 10000:-20000]
+
 
 # Factor for laser displacement and reference
 displacement = displacement * 4 + 30
@@ -45,6 +47,8 @@ num_rms = num_samples // rms_window_size
 adjusted_time = np.zeros(num_rms)
 adj_displacement = np.zeros(num_rms)
 rms_voltage_values = np.zeros(num_rms)
+rms_current_values = np.zeros(num_rms)
+
 
 #impedance = np.zeros(num_rms)
 
@@ -57,6 +61,8 @@ for i in range(num_rms):
 
     # Calculate RMS values
     rms_voltage_values[i] = np.sqrt(np.mean(ss_voltage.iloc[start_index:end_index] ** 2))
+    rms_current_values[i] = np.sqrt(np.mean(ss_current.iloc[start_index:end_index] ** 2))
+
 
     # Adjusted time is set to the middle time value of the window
     adjusted_time[i] = np.mean(time.iloc[start_index:end_index])
@@ -72,6 +78,10 @@ rms_voltage_values = rms_voltage_values.rolling(window=moving_average_window_siz
 
 if rms_voltage_values.isna().any():
         print(f"NaN values found in window ")
+
+rms_voltage_values = rms_voltage_values / rms_current_values
+    # coefficients = np.polyfit(impedance, adj_displacement, degree)
+    # est_displ = np.polyval(coefficients, impedance)
 
 
 diff_rms_voltage = rms_voltage_values - rms_voltage_values.shift(2)
@@ -138,6 +148,7 @@ plt.rcParams['xtick.labelsize'] = 20  # Set x tick labels fontsize
 plt.rcParams['ytick.labelsize'] = 20  # Set y tick labels fontsize
 plt.rcParams['grid.linewidth'] = 1.5
 plt.rcParams['axes.linewidth'] = 1.5
+plt.rcParams['font.weight'] = 'bold'  # Set default font weight to bold
 
 line_width = 2.5
 
@@ -174,7 +185,7 @@ sorted_displ_neg -= offset
 axs[0][0].plot(rms_voltage_values, adj_displacement, 'mediumturquoise', linestyle='None', marker='x', markersize=8, markeredgewidth=1, label='Measured Data Points')
 axs[0][0].plot(sorted_voltage_values, sorted_displ, 'darkcyan', linewidth=line_width, label='Polynomial Fit: Coefficients: ')
 axs[0][0].set_ylabel(r'Displacement (mm)')  # Y-axis label with increased font size and bold
-axs[0][0].set_xlabel(r'Voltage (V)', weight='bold')  # X-axis label with increased font size and bold
+axs[0][0].set_xlabel(r'$V_{Hrms}$ (V)', weight='bold')  # X-axis label with increased font size and bold
 axs[0][0].grid(True)  # Add grid with dashed lines
 axs[0][0].set_ylim(-0.08, None)  # Setting lower limit to -0.1
 
@@ -182,7 +193,7 @@ axs[0][1].plot(pos_rms_voltage_values, pos_adj_displacement, color='mediumpurple
 axs[0][1].plot(neg_rms_voltage_values, neg_adj_displacement, 'springgreen', linestyle='None', marker='x', markersize=8, markeredgewidth=1, label='Measured Data Points')
 axs[0][1].plot(sorted_voltage_values_pos, sorted_displ_pos, color='darkslateblue', linewidth=line_width, label='Polynomial Fit: Coefficients: ')
 axs[0][1].plot(sorted_voltage_values_neg, sorted_displ_neg, 'limegreen', linewidth=line_width, label='Polynomial Fit: Coefficients: ')
-axs[0][1].set_xlabel(r'Voltage (V)', weight='bold')  # X-axis label with increased font size and bold
+axs[0][1].set_xlabel(r'$V_{Hrms}$ (V)', weight='bold')  # X-axis label with increased font size and bold
 axs[0][1].grid(True)  # Add grid with dashed lines
 axs[0][1].set_ylim(-0.08, None)  # Setting lower limit to -0.1
 
@@ -203,14 +214,18 @@ axs[1][0].set_ylabel(r'Displacement (mm)')  # Y-axis label with increased font s
 axs[1][0].set_xlabel(r'Time (s)', weight='bold')  # X-axis label with increased font size and bold
 axs[1][0].grid(True)  # Add grid with dashed lines
 axs[1][0].set_ylim(-0.075, 0.48)  # Setting lower limit to -0.1
-axs[1][0].set_title(f'NRMSE: {round(nrmse, 4)}',fontsize=25)
+
+print(nrmse)
+#axs[1][0].set_title(f'20 Hz (Normal Mapping)',fontsize=25, fontweight='bold')
+axs[1][0].title.set_fontweight('bold')  # Set the title font weight to bold
 
 axs[1][1].plot(adjusted_time, adj_displacement, linewidth=line_width, color='r')
 axs[1][1].plot(adjusted_time, estimated_displacement, linewidth=line_width, color=p1_color)
 axs[1][1].set_xlabel(r'Time (s)', weight='bold')  # X-axis label with increased font size and bold
 axs[1][1].grid(True)  # Add grid with dashed lines
 axs[1][1].set_ylim(-0.075, 0.48)  # Setting lower limit to -0.1
-axs[1][1].set_title(f'NRMSE: {round(nrmse_doublefit, 4)}',fontsize=25)
+print(nrmse_doublefit)
+#axs[1][1].set_title(f'20 Hz (Dual Mapping)',fontsize=25)
 
 legend_elements = [
     Line2D([0], [0], color='darkcyan', lw=2, label='Cubic Polynomial Fit'),
@@ -229,14 +244,14 @@ fig.legend(handles=legend_elements, loc='upper center', handlelength=2,ncol=4, b
 
 fig.subplots_adjust(
     top=0.89,
-    bottom=0.18,
+    bottom=0.215,
     left=0.075,
     right=0.98,
-    hspace=0.46,
+    hspace=0.315,
     wspace=0.105
 )
 
-plt.savefig('FINAL-FIG-5.pdf')
+plt.savefig('Final-Plot-10.pdf')
 
 # Show the plot
 plt.show()
